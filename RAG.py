@@ -119,7 +119,6 @@
 #                 st.markdown(f"**RAG App:** {answer}")
 
 
-
 import streamlit as st
 import os
 import tempfile
@@ -135,15 +134,14 @@ from dotenv import load_dotenv
 from langchain.vectorstores import Qdrant
 from qdrant_client import QdrantClient
 from qdrant_client.http.models import Distance, VectorParams
+from langchain.schema import Document
 
-# Load .env variables (for local use)
+# Load environment variables
 load_dotenv()
 api_key = os.getenv("API_KEY")
-
-# Configure Gemini API key
 genai.configure(api_key=api_key)
 
-# Gemini wrapper for LangChain
+# Gemini LLM wrapper
 class GeminiLLM(LLM):
     model: Any = genai.GenerativeModel("gemini-1.5-flash")
     temperature: float = 0.7
@@ -156,19 +154,16 @@ class GeminiLLM(LLM):
         response = self.model.generate_content(prompt)
         return response.text
 
-# Streamlit app title
+# Streamlit UI
 st.title("📄 RAG App: Chat with Your Documents (Gemini + Qdrant)")
 
-# Initialize chat history
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
 if "edit_index" not in st.session_state:
     st.session_state.edit_index = None
 
-# File upload
 uploaded_files = st.file_uploader("Upload Documents", type=["pdf", "txt", "docx"], accept_multiple_files=True)
 
-# Process uploaded documents
 if uploaded_files:
     raw_text = ""
     for uploaded_file in uploaded_files:
@@ -187,12 +182,15 @@ if uploaded_files:
         for doc in documents:
             raw_text += doc.page_content + "\n"
 
-    # Split text and generate embeddings
+    # Split and embed
     splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=150)
     texts = splitter.split_text(raw_text)
+    docs = [Document(page_content=t) for t in texts]
+
+    # Embeddings
     embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
 
-    # Qdrant in-memory setup
+    # Qdrant in-memory
     qdrant = QdrantClient(":memory:")
     collection_name = "rag_collection"
     qdrant.recreate_collection(
@@ -200,13 +198,14 @@ if uploaded_files:
         vectors_config=VectorParams(size=384, distance=Distance.COSINE)
     )
 
-    # Store embeddings in Qdrant
-    vectordb = Qdrant.from_texts(
-        texts=texts,
+    # Store documents in Qdrant
+    vectordb = Qdrant.from_documents(
+        documents=docs,
         embedding=embeddings,
         collection_name=collection_name,
         client=qdrant
     )
+
     retriever = vectordb.as_retriever(search_type="similarity", search_kwargs={"k": 4})
 
     # QA Chain
@@ -216,7 +215,7 @@ if uploaded_files:
         return_source_documents=True
     )
 
-    # Display chat history
+    # Chat History
     st.markdown("### 💬 Chat History")
     for i, chat in enumerate(st.session_state.chat_history):
         with st.expander(f"Q{i+1}: {chat['user']}"):
@@ -239,7 +238,7 @@ if uploaded_files:
                 st.rerun()
 
     else:
-        # Ask new question
+        # Ask a new question
         query = st.text_input("Ask a new question about your documents:")
         if query:
             with st.spinner("Generating response..."):
