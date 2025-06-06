@@ -11,7 +11,7 @@ from typing import Optional, List, Any
 import google.generativeai as genai
 from dotenv import load_dotenv
 from langchain.vectorstores import Chroma
-import chromadb
+# import chromadb
 
 
 load_dotenv()
