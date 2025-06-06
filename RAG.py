@@ -67,7 +67,7 @@ if uploaded_files:
     splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=150)
     texts = splitter.split_text(raw_text)
     embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
-    vectordb = Chroma.from_texts(texts, embeddings)
+    vectordb = Chroma.from_texts(texts, embedding=embeddings)
     retriever = vectordb.as_retriever(search_type="similarity", search_kwargs={"k": 4})
 
     # QA Chain
