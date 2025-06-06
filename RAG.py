@@ -1,7 +1,7 @@
 import streamlit as st
 import os
 import tempfile
-from langchain.vectorstores import FAISS
+# from langchain.vectorstores import FAISS
 from langchain.document_loaders import PyPDFLoader, TextLoader, Docx2txtLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.embeddings import HuggingFaceEmbeddings
@@ -10,6 +10,8 @@ from langchain.llms.base import LLM
 from typing import Optional, List, Any
 import google.generativeai as genai
 from dotenv import load_dotenv
+from langchain.vectorstores import Chroma
+import chromadb
 
 
 load_dotenv()
@@ -65,7 +67,7 @@ if uploaded_files:
     splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=150)
     texts = splitter.split_text(raw_text)
     embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
-    vectordb = FAISS.from_texts(texts, embeddings)
+    vectordb = Chroma.from_texts(texts, embeddings)
     retriever = vectordb.as_retriever(search_type="similarity", search_kwargs={"k": 4})
 
     # QA Chain
