@@ -138,7 +138,7 @@ from langchain.schema import Document
 
 # Load environment variables
 load_dotenv()
-api_key = os.getenv("API_KEY")
+api_key = os.getenv("API_KEY") or st.secrets.get("API_KEY")
 genai.configure(api_key=api_key)
 
 # Gemini LLM wrapper
@@ -154,14 +154,16 @@ class GeminiLLM(LLM):
         response = self.model.generate_content(prompt)
         return response.text
 
-# Streamlit UI
+# Streamlit app title
 st.title("📄 RAG App: Chat with Your Documents (Gemini + Qdrant)")
 
+# Session state
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
 if "edit_index" not in st.session_state:
     st.session_state.edit_index = None
 
+# File uploader
 uploaded_files = st.file_uploader("Upload Documents", type=["pdf", "txt", "docx"], accept_multiple_files=True)
 
 if uploaded_files:
@@ -182,15 +184,15 @@ if uploaded_files:
         for doc in documents:
             raw_text += doc.page_content + "\n"
 
-    # Split and embed
+    # Split into chunks
     splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=150)
     texts = splitter.split_text(raw_text)
     docs = [Document(page_content=t) for t in texts]
 
-    # Embeddings
+    # Embedding model
     embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
 
-    # Qdrant in-memory
+    # Qdrant in-memory setup
     qdrant = QdrantClient(":memory:")
     collection_name = "rag_collection"
     qdrant.recreate_collection(
@@ -198,24 +200,25 @@ if uploaded_files:
         vectors_config=VectorParams(size=384, distance=Distance.COSINE)
     )
 
-    # Store documents in Qdrant
-    vectordb = Qdrant.from_documents(
-        documents=docs,
-        embedding=embeddings,
+    # Qdrant LangChain wrapper
+    vectordb = Qdrant(
+        client=qdrant,
         collection_name=collection_name,
-        client=qdrant
+        embeddings=embeddings
     )
+    vectordb.add_documents(documents=docs)
 
+    # Create retriever
     retriever = vectordb.as_retriever(search_type="similarity", search_kwargs={"k": 4})
 
-    # QA Chain
+    # RAG chain
     qa_chain = RetrievalQA.from_chain_type(
         llm=GeminiLLM(),
         retriever=retriever,
         return_source_documents=True
     )
 
-    # Chat History
+    # Chat History UI
     st.markdown("### 💬 Chat History")
     for i, chat in enumerate(st.session_state.chat_history):
         with st.expander(f"Q{i+1}: {chat['user']}"):
@@ -236,9 +239,7 @@ if uploaded_files:
                 }
                 st.session_state.edit_index = None
                 st.rerun()
-
     else:
-        # Ask a new question
         query = st.text_input("Ask a new question about your documents:")
         if query:
             with st.spinner("Generating response..."):
