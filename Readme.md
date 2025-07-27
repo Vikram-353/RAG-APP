@@ -35,3 +35,33 @@ This is a Streamlit-based RAG (Retrieval-Augmented Generation) application that 
    ```bash
    git clone https://github.com/Vikram-353/RAG-APP/
    cd RAG-APP
+   ```
+
+2. **Install dependencies**
+
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+3. **Create .env file**
+
+   ```bash
+   API_KEY=your_gemini_api_key
+   ```
+
+4. **Run the Streamlit app**
+
+   ```bash
+   streamlit run app.py
+   ```
+
+## 📁 Folder Structure
+
+```bash
+
+    .
+    ├── app.py               # Main Streamlit application
+    ├── requirements.txt     # Python dependencies
+    └── .env                 # Environment variables (not committed)
+
+    ```
